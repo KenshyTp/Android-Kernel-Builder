@@ -1,9 +1,9 @@
 [  {
     "kernelSource": {
-      "name": "miku-KernelSU",
-      "repo": "https://github.com/PhamtomK12/kernel_xiaomi_odin",
-      "branch": "TDA",
-      "device": "odin"
+      "name": "Kernel_corfu",
+      "repo": "https://github.com/KenshyTp/Kernel_corfu.git",
+      "branch": "corfu",
+      "device": "corfu"
     },
     "withKernelSU": true,
     "toolchains": [
