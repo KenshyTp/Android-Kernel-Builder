@@ -124,8 +124,8 @@ jobs:
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         if: ${{ env.withKernelSU == 'true' }}
         run: |
-          if [ -d "./Ksu" ]; then
-            rm -rf "./Ksu"
+          if [ -d "./ksu" ]; then
+            rm -rf "./ksu"
           fi
           if [ -d "./drivers/kernelsu" ]; then
             rm -rf "./drivers/kernelsu"
