@@ -49,13 +49,17 @@ jobs:
       - name: "⭐ Install prerequisites"
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc curl git zip ftp \
-            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
-            binutils-aarch64-linux-gnu libssl-dev lftp zstd wget libfl-dev \
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu-10 \
+            binutils-aarch64-linux-gnu-2.35 \
+            build-essential bc curl git zip ftp \
+            gcc-arm-linux-gnueabi libssl-dev lftp zstd wget libfl-dev \
             python2 python3 libarchive-tools
 
-      - name: "👍 Set cross compile"
-        run: echo "export CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+      - name: "👍 Set cross compile and architecture"
+        run: |
+          echo "export CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+          echo "export ARCH=arm64" >> $GITHUB_ENV
 
       - name: "🌟 Clone kernel source => (${{ env.kernelRepo }})"
         working-directory: ./${{ env.kernelDir }}
@@ -78,14 +82,14 @@ jobs:
       - name: "👍 Make defconfig"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
-          make ARCH=arm64 ${DEFCONFIG_NAME}
+          make ${DEFCONFIG_NAME}
 
       - name: "🎶 Build kernel"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
-          make ARCH=arm64 ${args}
+          make ${args}
 
       - name: "💛 Upload Image"
         uses: actions/upload-artifact@v3
