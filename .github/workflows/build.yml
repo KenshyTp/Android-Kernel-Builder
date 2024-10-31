@@ -21,7 +21,7 @@ jobs:
         id: generate-matrix
         run: |
           echo "repos<<EOF" >> $GITHUB_OUTPUT
-          cat  ${{ env.CONFIGURATION }} >> $GITHUB_OUTPUT
+          cat ${{ env.CONFIGURATION }} >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
   Build-Kernel:
@@ -73,12 +73,11 @@ jobs:
 
           cat ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
 
-      # Resto de las configuraciones y compilación...
       - name: "👍 Make defconfig"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
           echo "PATH Variable: $PATH"
-          make ${env.DEFCONFIG_NAME}
+          make $DEFCONFIG_NAME  # Corrección en el acceso a la variable
 
       - name: "🎶 Build kernel"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
