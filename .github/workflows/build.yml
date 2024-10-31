@@ -50,16 +50,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            gcc-aarch64-linux-gnu-10 \
-            binutils-aarch64-linux-gnu-2.35 \
+            gcc-aarch64-linux-gnu \
+            binutils-aarch64-linux-gnu \
             build-essential bc curl git zip ftp \
             gcc-arm-linux-gnueabi libssl-dev lftp zstd wget libfl-dev \
             python2 python3 libarchive-tools
-
-      - name: "👍 Set cross compile and architecture"
-        run: |
-          echo "export CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
-          echo "export ARCH=arm64" >> $GITHUB_ENV
 
       - name: "🌟 Clone kernel source => (${{ env.kernelRepo }})"
         working-directory: ./${{ env.kernelDir }}
@@ -73,23 +68,26 @@ jobs:
           if [ -d "./ksu" ]; then
             rm -rf "./ksu"
           fi
+
           curl -LSs "https://github.com/KenshyTp/Ksu/raw/refs/heads/ksu/kernel/setup.sh" | bash -s
 
           echo -e "\nCONFIG_KPROBES=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "\nCONFIG_HAVE_KPROBES=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "\nCONFIG_KPROBE_EVENTS=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
 
+          cat ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
+
       - name: "👍 Make defconfig"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
-          make ${DEFCONFIG_NAME}
+          make ARCH=arm64 ${env.DEFCONFIG_NAME}
 
       - name: "🎶 Build kernel"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
-          make ${args}
+          make ARCH=arm64 ${args}
 
       - name: "💛 Upload Image"
         uses: actions/upload-artifact@v3
