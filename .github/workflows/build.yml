@@ -27,7 +27,8 @@ jobs:
   Build-Kernel:
     name: "🐎 Build kernel"
     runs-on: ubuntu-latest
-    needs: Set-repos
+    needs:
+      - Set-repos
     strategy:
       max-parallel: 2
       fail-fast: false
@@ -39,8 +40,9 @@ jobs:
       kernelRepo: ${{ matrix.repos.kernelSource.repo }}
       kernelBranch: ${{ matrix.repos.kernelSource.branch }}
       kernelDevice: ${{ matrix.repos.kernelSource.device }}
-      DEFCONFIG_NAME: ${{ matrix.repos.kernelSource.device }}_defconfig
+      DEFCONFIG_NAME: "${{ matrix.repos.kernelSource.device }}_defconfig"
       withKernelSU: ${{ matrix.repos.withKernelSU }}
+
     steps:
       - name: "✨ Create working dir"
         run: mkdir -p $kernelDir
@@ -48,9 +50,7 @@ jobs:
       - name: "⭐ Install prerequisites"
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc curl git zip \
-          gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev \
-          lftp zstd wget libfl-dev python2 python3 libarchive-tools
+          sudo apt-get install -y build-essential bc curl git zip ftp gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev lftp zstd wget libfl-dev python2 python3 libarchive-tools
 
       - name: "🌟 Clone kernel source => (${{ env.kernelRepo }})"
         working-directory: ./${{ env.kernelDir }}
@@ -62,8 +62,8 @@ jobs:
         env:
           toolchains: "${{ toJSON(matrix.repos.toolchains) }}"
         run: |
-          toolchains_num=$(echo $toolchains | jq 'length')
-          for ((i=0; i<toolchains_num; i++)); do
+          toolchains_num="$(echo $toolchains | jq 'length')"
+          for ((i=0;i<toolchains_num;i++)); do
             name=$(echo $toolchains | jq -r ".[$i].name")
             repo=$(echo $toolchains | jq -r ".[$i].repo")
             branch=$(echo $toolchains | jq -r ".[$i].branch")
@@ -82,16 +82,36 @@ jobs:
           ARCH=$(echo $params | jq -r ".ARCH")
           CROSS_COMPILE=$(echo $params | jq -r ".CROSS_COMPILE")
           CROSS_COMPILE_COMPAT=$(echo $params | jq -r ".CROSS_COMPILE_COMPAT")
+          CROSS_COMPILE_ARM32=$(echo $params | jq -r ".CROSS_COMPILE_ARM32")
           CLANG_TRIPLE=$(echo $params | jq -r ".CLANG_TRIPLE")
+          AR=$(echo $params | jq -r ".AR")
           CC=$(echo $params | jq -r ".CC")
-          OUT_DIR="${{ env.OUT_DIR }}"
-          
-          args="-j$THREAD"
-          if [ -n "$OUT_DIR" ]; then
-            mkdir -p $(pwd)/$OUT_DIR
-            args="$args O=$(pwd)/$OUT_DIR"
+
+          echo "ARCH=$ARCH" >> $GITHUB_ENV
+
+          args="-j$(nproc --all)"
+          if [ -n "${{ env.OUT_DIR }}" ]; then
+            mkdir -p $(pwd)/${{ env.OUT_DIR }}
+            args="$args O=$(pwd)/${{ env.OUT_DIR }}"
           fi
-          args="$args ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE CLANG_TRIPLE=$CLANG_TRIPLE CC=$CC"
+          if [ -n "$ARCH" ]; then
+            args="$args ARCH=$ARCH"
+          fi
+          if [ -n "$CROSS_COMPILE" ]; then
+            args="$args CROSS_COMPILE=$CROSS_COMPILE"
+          fi
+          if [ -n "$CLANG_TRIPLE" ]; then
+            args="$args CLANG_TRIPLE=$CLANG_TRIPLE"
+          fi
+          if [ -n "$CROSS_COMPILE_COMPAT" ]; then
+            args="$args CROSS_COMPILE_ARM32=$CROSS_COMPILE_COMPAT"
+          fi
+          if [ -n "$AR" ]; then
+            args="$args AR=$AR"
+          fi
+          if [ -n "$CC" ]; then
+            args="$args CC=$CC"
+          fi
           echo "args=$args" >> $GITHUB_OUTPUT
 
       - name: "😋 Update KernelSU"
@@ -99,21 +119,25 @@ jobs:
         if: ${{ env.withKernelSU == 'true' }}
         run: |
           curl -LSs "https://github.com/KenshyTp/Ksu/raw/refs/heads/ksu/kernel/setup.sh" | bash -s
-          echo -e "\nCONFIG_KPROBES=y" >> ./arch/${{ env.ARCH }}/configs/${{ env.DEFCONFIG_NAME }}
-          echo -e "\nCONFIG_HAVE_KPROBES=y" >> ./arch/${{ env.ARCH }}/configs/${{ env.DEFCONFIG_NAME }}
-          echo -e "\nCONFIG_KPROBE_EVENTS=y" >> ./arch/${{ env.ARCH }}/configs/${{ env.DEFCONFIG_NAME }}
+          echo -e "\nCONFIG_KPROBES=y" >> ./arch/arch64/configs/${{ env.DEFCONFIG_NAME }}
+          echo -e "\nCONFIG_HAVE_KPROBES=y" >> ./arch/arch64/configs/${{ env.DEFCONFIG_NAME }}
+          echo -e "\nCONFIG_KPROBE_EVENTS=y" >> ./arch/arch64/configs/${{ env.DEFCONFIG_NAME }}
+
+          cat ./arch/arch64/configs/${{ env.DEFCONFIG_NAME }}
 
       - name: "👍 Make defconfig"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
-        run: make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
+        run: |
+          make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
 
       - name: "🎶 Build kernel"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
-        run: make ${{ env.args }}
+        run: |
+          make ${args}
 
       - name: "💛 Upload Image"
         uses: actions/upload-artifact@v3
